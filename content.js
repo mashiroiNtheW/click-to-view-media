@@ -12,6 +12,13 @@
   ]);
   // Elements that are likely to use a CSS background image. Only these are
   // checked with getComputedStyle so we don't walk the whole page's styles.
+  const EMOTE_HINT_SELECTOR = [
+    '[class*="emote" i]',
+    '[class*="emoji" i]',
+    '[alt*="emote" i]',
+    '[alt*="emoji" i]'
+  ].join(", ");
+
   const BG_CANDIDATE_SELECTOR = [
     '[style*="background-image"]',
     '[data-testid*="avatar" i]',
@@ -23,6 +30,7 @@
     '[class*="photo" i]',
     '[class*="thumb" i]',
     '[class*="image" i]',
+    EMOTE_HINT_SELECTOR,
     '[role="img"]'
   ].join(", ");
 
@@ -41,7 +49,6 @@
       filter: blur(var(--click-to-view-blur, ${DEFAULT_BLUR_PX}px)) !important;
       opacity: .12 !important;
       cursor: pointer !important;
-      transition: filter .12s ease, opacity .12s ease;
     }
     video[${MARK}="hidden"] { visibility: visible !important; }
     [${MARK}="hidden"]::selection { background: transparent; }
@@ -134,7 +141,10 @@
     if (!backgroundImage || backgroundImage === "none" || !/url\(/i.test(backgroundImage)) return false;
 
     const rect = el.getBoundingClientRect();
-    return rect.width >= 16 && rect.height >= 16;
+    // Emotes can be rendered as very small background images (16-32px), so
+    // they get a lower size floor than avatars and thumbnails.
+    const minSize = el.matches(EMOTE_HINT_SELECTOR) ? 8 : 16;
+    return rect.width >= minSize && rect.height >= minSize;
   }
 
   function applyHiddenStyle(el) {
@@ -153,7 +163,9 @@
     el.style.setProperty("filter", `blur(var(--click-to-view-blur, ${DEFAULT_BLUR_PX}px))`, "important");
     el.style.setProperty("opacity", "0.12", "important");
     el.style.setProperty("cursor", "pointer", "important");
-    el.style.setProperty("transition", "filter .12s ease, opacity .12s ease", "important");
+    // Keep the blur instant: a site's own transition would otherwise fade the
+    // blur in and show the media unblurred for a moment.
+    el.style.setProperty("transition", "none", "important");
   }
 
   function restoreHiddenStyle(el) {
@@ -176,7 +188,8 @@
     return el.style.getPropertyValue("filter") === `blur(var(--click-to-view-blur, ${DEFAULT_BLUR_PX}px))` &&
       el.style.getPropertyPriority("filter") === "important" &&
       el.style.getPropertyValue("opacity") === "0.12" &&
-      el.style.getPropertyPriority("opacity") === "important";
+      el.style.getPropertyPriority("opacity") === "important" &&
+      el.style.getPropertyValue("transition") === "none";
   }
 
   function hide(el) {
@@ -243,6 +256,26 @@
     ? callback => requestAnimationFrame(callback)
     : callback => setTimeout(callback, 16);
 
+  // Hide newly inserted media right away instead of waiting for the batched
+  // scan below. Otherwise a freshly loaded chat message, emote, or lazy image
+  // is painted unblurred for at least one frame. The limits keep this cheap on
+  // large insertions (initial hydration, infinite scroll); anything past them
+  // is still picked up by the requestAnimationFrame scan.
+  const IMMEDIATE_MEDIA_LIMIT = 200;
+  const IMMEDIATE_BG_LIMIT = 60;
+
+  function hideImmediately(node) {
+    if (node.matches(MEDIA_SELECTOR) || node.matches(BG_CANDIDATE_SELECTOR)) {
+      hide(node);
+    }
+    const media = node.querySelectorAll(MEDIA_SELECTOR);
+    const mediaLimit = Math.min(media.length, IMMEDIATE_MEDIA_LIMIT);
+    for (let i = 0; i < mediaLimit; i++) hide(media[i]);
+    const candidates = node.querySelectorAll(BG_CANDIDATE_SELECTOR);
+    const candidateLimit = Math.min(candidates.length, IMMEDIATE_BG_LIMIT);
+    for (let i = 0; i < candidateLimit; i++) hide(candidates[i]);
+  }
+
   function scheduleScan(node) {
     if (!node) return;
     pendingScanNodes.add(node);
@@ -261,12 +294,15 @@
     for (const record of records) {
       if (record.type === "childList") {
         record.addedNodes.forEach(node => {
-          if (node.nodeType === Node.ELEMENT_NODE || node.nodeType === Node.DOCUMENT_FRAGMENT_NODE) {
+          if (node.nodeType === Node.ELEMENT_NODE) {
+            hideImmediately(node);
             scheduleScan(node);
             if (node.shadowRoot) {
               scheduleScan(node.shadowRoot);
               observeRoot(node.shadowRoot);
             }
+          } else if (node.nodeType === Node.DOCUMENT_FRAGMENT_NODE) {
+            scheduleScan(node);
           }
         });
       } else if (record.type === "attributes") {
