@@ -21,8 +21,8 @@ Built for Chrome and Firefox for Android Beta. Everything runs locally: no accou
 |---|---|
 | **Per-item toggle** | Every image and video is independent. Revealing one never reveals the rest of the page. Click the same item again to blur it. |
 | **Adjustable blur** | Set blur from **18px to 100px** in the popup. The value is saved and applied to media already on the page. |
-| **Broad media coverage** | `<img>`, `<video>`, `<input type="image">`, SVG `<image>`, and heuristic CSS `background-image` elements such as avatars, banners, thumbnails, and `role="img"`. |
-| **Dynamic pages** | Lazy-loaded media, single-page navigation, and open shadow roots are picked up as they appear. Heavy scans are batched with `requestAnimationFrame`. |
+| **Broad media coverage** | `<img>`, `<video>`, `<input type="image">`, SVG `<image>`, chat emotes and emoji (including CSS-background emotes), and heuristic CSS `background-image` elements such as avatars, banners, thumbnails, and `role="img"`. |
+| **Dynamic pages** | Lazy-loaded media, single-page navigation, and open shadow roots are picked up as they appear. New media is blurred in the same tick it is inserted, so it never flashes unblurred; heavier background scans are batched with `requestAnimationFrame`. |
 | **YouTube ads** | Ads are muted when they start, your previous mute/volume state is restored afterwards, and Skip is clicked as soon as it appears. Works on desktop YouTube and `m.youtube.com`. |
 | **Local by design** | No network calls and no data collection. The extension stores only your blur preference. |
 
