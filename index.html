@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Click to View Media — look when you're ready</title>
+  <meta name="description" content="A Chrome extension that blurs images and videos until you click them. Adjustable blur, YouTube ad mute and auto-skip, built for real pages.">
+  <meta name="theme-color" content="#eef1f4">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23121620'/%3E%3Cpath d='M16 32s6-11 16-11 16 11 16 11-6 11-16 11-16-11-16-11Z' fill='none' stroke='%23fff' stroke-width='3'/%3E%3Ccircle cx='32' cy='32' r='5' fill='%23d6ff3f'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <style>
+    :root {
+      --paper: #eef1f4;
+      --paper-2: #e4e9ee;
+      --ink: #121620;
+      --muted: #596575;
+      --line: #c7d0da;
+      --blue: #1f56ff;
+      --blue-dark: #123bd1;
+      --lime: #d6ff3f;
+      --white: #fbfcfd;
+      --radius: 8px;
+      --display: "Segoe UI Variable Display", "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+      --body: "Segoe UI Variable Text", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+      --mono: "Cascadia Code", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 82% 4%, rgba(31, 86, 255, .10), transparent 26rem),
+        linear-gradient(180deg, var(--paper), #f7f8f9 58%, var(--paper));
+      color: var(--ink);
+      font: 400 16px/1.55 var(--body);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: inherit; }
+
+    ::selection { background: var(--lime); color: var(--ink); }
+
+    .wrap {
+      width: min(1120px, calc(100% - 40px));
+      margin: 0 auto;
+    }
+
+    .top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      padding: 26px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      font-weight: 650;
+      letter-spacing: -.02em;
+      text-decoration: none;
+    }
+
+    .brand svg { display: block; }
+
+    .top-link {
+      color: var(--muted);
+      font-size: .92rem;
+      text-underline-offset: 4px;
+    }
+
+    .top-link:hover { color: var(--ink); }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(320px, .95fr);
+      align-items: center;
+      gap: clamp(36px, 7vw, 92px);
+      padding: clamp(56px, 9vw, 116px) 0 clamp(56px, 7vw, 90px);
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      margin: 0 0 22px;
+      color: var(--muted);
+      font: 500 .82rem/1 var(--mono);
+      letter-spacing: .02em;
+    }
+
+    .status::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--blue);
+      box-shadow: 0 0 0 4px rgba(31, 86, 255, .12);
+    }
+
+    h1 {
+      max-width: 12ch;
+      margin: 0;
+      font-family: var(--display);
+      font-size: clamp(3.1rem, 7.4vw, 6.4rem);
+      font-weight: 680;
+      line-height: .92;
+      letter-spacing: -.065em;
+    }
+
+    .lede {
+      max-width: 42ch;
+      margin: 26px 0 0;
+      color: var(--muted);
+      font-size: clamp(1.02rem, 1.5vw, 1.17rem);
+      line-height: 1.6;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 32px;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 48px;
+      padding: 0 20px;
+      border: 1px solid transparent;
+      border-radius: var(--radius);
+      font: 600 .96rem/1 var(--body);
+      text-decoration: none;
+      transition: transform .16s ease, background-color .16s ease, border-color .16s ease;
+    }
+
+    .button:hover { transform: translateY(-1px); }
+
+    .button:focus-visible,
+    .demo:focus-visible,
+    .top-link:focus-visible {
+      outline: 3px solid rgba(31, 86, 255, .55);
+      outline-offset: 3px;
+    }
+
+    .button-primary {
+      background: var(--ink);
+      color: var(--white);
+    }
+
+    .button-primary:hover { background: #242b39; }
+
+    .button-secondary {
+      border-color: var(--line);
+      background: rgba(255, 255, 255, .36);
+      color: var(--ink);
+    }
+
+    .button-secondary:hover { border-color: #9eabb9; background: rgba(255, 255, 255, .7); }
+
+    .micro {
+      margin: 16px 0 0;
+      color: var(--muted);
+      font-size: .84rem;
+    }
+
+    .demo-wrap {
+      position: relative;
+      padding: 10px;
+      border: 1px solid rgba(18, 22, 32, .10);
+      border-radius: 26px;
+      background: rgba(255, 255, 255, .38);
+      box-shadow: 0 30px 80px -48px rgba(18, 22, 32, .55);
+    }
+
+    .demo {
+      display: block;
+      width: 100%;
+      padding: 0;
+      border: 0;
+      border-radius: 18px;
+      background: #0e1420;
+      color: var(--white);
+      text-align: left;
+      cursor: pointer;
+      overflow: hidden;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .demo-media {
+      position: relative;
+      display: block;
+      aspect-ratio: 4 / 3;
+      background:
+        radial-gradient(circle at 70% 24%, #fff7cf 0 8%, transparent 8.5%),
+        radial-gradient(circle at 29% 28%, rgba(255, 121, 73, .95) 0 22%, transparent 55%),
+        linear-gradient(154deg, #ffb703 0%, #ff6938 34%, #d62828 54%, #1f56ff 55.2%, #0b1f66 100%);
+      filter: blur(22px) saturate(.6);
+      opacity: .46;
+      transform: scale(1.03);
+      transition: filter .5s cubic-bezier(.2, .8, .2, 1), opacity .5s ease, transform .6s cubic-bezier(.2, .8, .2, 1);
+    }
+
+    .demo-media::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(115deg, transparent 0 46%, rgba(255, 255, 255, .34) 46.2% 48%, transparent 48.2%),
+        repeating-linear-gradient(90deg, rgba(255, 255, 255, .08) 0 1px, transparent 1px 52px);
+      mix-blend-mode: soft-light;
+    }
+
+    .demo[aria-pressed="true"] .demo-media {
+      filter: blur(0) saturate(1.08);
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    .demo-caption {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 15px 17px 16px;
+      border-top: 1px solid rgba(255, 255, 255, .13);
+      background: #0e1420;
+    }
+
+    .demo-caption span:first-child {
+      font: 600 .9rem/1.2 var(--body);
+    }
+
+    .demo-caption span:last-child {
+      color: rgba(255, 255, 255, .52);
+      font: 500 .74rem/1 var(--mono);
+    }
+
+    .demo-note {
+      position: absolute;
+      right: -8px;
+      bottom: -18px;
+      padding: 8px 11px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--white);
+      color: var(--muted);
+      font: 500 .74rem/1 var(--mono);
+      transform: rotate(-2deg);
+      box-shadow: 0 10px 24px -18px rgba(18, 22, 32, .6);
+    }
+
+    section { padding: clamp(48px, 7vw, 84px) 0; }
+
+    .section-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+      gap: 28px;
+      align-items: start;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    h2 {
+      margin: 0;
+      font-family: var(--display);
+      font-size: clamp(1.9rem, 3.4vw, 3rem);
+      font-weight: 650;
+      line-height: 1;
+      letter-spacing: -.045em;
+    }
+
+    .section-head p {
+      max-width: 54ch;
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .features {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      column-gap: clamp(32px, 6vw, 84px);
+    }
+
+    .feature {
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr);
+      gap: 14px;
+      padding: 26px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .feature:nth-last-child(-n + 2) { border-bottom: 0; }
+
+    .feature-mark {
+      display: grid;
+      place-items: center;
+      width: 26px;
+      height: 26px;
+      margin-top: 2px;
+      color: var(--blue);
+    }
+
+    .feature-mark svg { display: block; }
+
+    .feature h3 {
+      margin: 0 0 5px;
+      font-size: 1rem;
+      font-weight: 650;
+      letter-spacing: -.015em;
+    }
+
+    .feature p {
+      margin: 0;
+      color: var(--muted);
+      font-size: .94rem;
+      line-height: 1.55;
+    }
+
+    .install-grid {
+      display: grid;
+      grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr);
+      gap: clamp(32px, 6vw, 84px);
+      align-items: start;
+      padding-top: 28px;
+    }
+
+    .install-copy p {
+      max-width: 36ch;
+      margin: 0 0 24px;
+      color: var(--muted);
+    }
+
+    .steps {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      counter-reset: step;
+    }
+
+    .steps li {
+      position: relative;
+      counter-increment: step;
+      padding: 0 0 22px 52px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .steps li + li { padding-top: 22px; }
+
+    .steps li:last-child { border-bottom: 0; padding-bottom: 0; }
+
+    .steps li::before {
+      content: counter(step, decimal-leading-zero);
+      position: absolute;
+      left: 0;
+      top: 1px;
+      color: var(--blue);
+      font: 600 .76rem/1 var(--mono);
+    }
+
+    .steps li + li::before { top: 23px; }
+
+    .steps strong {
+      display: block;
+      margin-bottom: 3px;
+      font-weight: 650;
+    }
+
+    .steps span { color: var(--muted); font-size: .94rem; }
+
+    code {
+      padding: 2px 5px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: rgba(255, 255, 255, .5);
+      font: 500 .86em/1.3 var(--mono);
+    }
+
+    footer {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 28px 0 38px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: .86rem;
+    }
+
+    footer a { text-underline-offset: 4px; }
+
+    .footer-links {
+      display: inline-flex;
+      gap: 18px;
+    }
+
+    @media (max-width: 820px) {
+      .hero,
+      .section-head,
+      .install-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .hero { gap: 42px; }
+
+      h1 { max-width: 10ch; }
+
+      .features { grid-template-columns: 1fr; }
+
+      .feature:nth-last-child(-n + 2) { border-bottom: 1px solid var(--line); }
+
+      .feature:last-child { border-bottom: 0; }
+
+      .demo-wrap { max-width: 540px; }
+
+      .demo-note { right: 6px; }
+    }
+
+    @media (max-width: 520px) {
+      .wrap { width: min(100% - 24px, 1120px); }
+
+      .top { padding: 18px 0; }
+
+      .top-link { display: none; }
+
+      h1 { font-size: clamp(2.9rem, 16vw, 4.4rem); }
+
+      .actions .button { width: 100%; }
+
+      .demo-note { display: none; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after {
+        transition-duration: .01ms !important;
+        animation-duration: .01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="wrap top">
+    <a class="brand" href="./" aria-label="Click to View Media home">
+      <svg width="28" height="28" viewBox="0 0 64 64" aria-hidden="true">
+        <rect width="64" height="64" rx="14" fill="#121620"/>
+        <path d="M16 32s6-11 16-11 16 11 16 11-6 11-16 11-16-11-16-11Z" fill="none" stroke="#fff" stroke-width="3"/>
+        <circle cx="32" cy="32" r="5" fill="#d6ff3f"/>
+      </svg>
+      Click to View Media
+    </a>
+    <a class="top-link" href="https://github.com/mashiroiNtheW/click-to-view-media" target="_blank" rel="noreferrer">Source on GitHub</a>
+  </header>
+
+  <main>
+    <div class="wrap hero">
+      <div>
+        <p class="status">Chrome extension, version 1.3.1</p>
+        <h1>Look when you're ready.</h1>
+        <p class="lede">Images and video stay blurred until you click. YouTube ads get muted and skipped. Every reveal is yours.</p>
+        <div class="actions">
+          <a class="button button-primary" href="https://github.com/mashiroiNtheW/click-to-view-media/archive/refs/heads/main.zip">Download extension</a>
+          <a class="button button-secondary" href="https://github.com/mashiroiNtheW/click-to-view-media" target="_blank" rel="noreferrer">View source</a>
+        </div>
+        <p class="micro">Free. No account. Installs as an unpacked Chrome extension.</p>
+      </div>
+
+      <div class="demo-wrap">
+        <button class="demo" id="demo" type="button" aria-pressed="false" aria-label="Reveal the demo image">
+          <span class="demo-media" aria-hidden="true"></span>
+          <span class="demo-caption">
+            <span id="demo-label">Click to reveal</span>
+            <span id="demo-state">blurred</span>
+          </span>
+        </button>
+        <span class="demo-note" aria-hidden="true">try it</span>
+      </div>
+    </div>
+
+    <section class="wrap" id="features">
+      <div class="section-head">
+        <h2>Quiet by default.</h2>
+        <p>Click to View Media treats every page like it's being read over your shoulder. Nothing is removed from the page — it just waits for your click.</p>
+      </div>
+
+      <div class="features">
+        <div class="feature">
+          <span class="feature-mark" aria-hidden="true">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="16" rx="2"/>
+              <circle cx="9" cy="9" r="1.5" fill="currentColor" stroke="none"/>
+              <path d="m4 17 5-5 4 4 3-3 4 4"/>
+            </svg>
+          </span>
+          <div>
+            <h3>Every image shape</h3>
+            <p>Regular images, video, SVG images, image buttons, and likely CSS background images all get the same treatment.</p>
+          </div>
+        </div>
+        <div class="feature">
+          <span class="feature-mark" aria-hidden="true">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+              <path d="M4 7h16M4 12h16M4 17h16"/>
+              <circle cx="9" cy="7" r="2" fill="var(--paper)"/>
+              <circle cx="15" cy="12" r="2" fill="var(--paper)"/>
+              <circle cx="8" cy="17" r="2" fill="var(--paper)"/>
+            </svg>
+          </span>
+          <div>
+            <h3>Blur, on your terms</h3>
+            <p>Open the toolbar popup and set blur from 18 to 100 pixels. The setting follows you across pages.</p>
+          </div>
+        </div>
+        <div class="feature">
+          <span class="feature-mark" aria-hidden="true">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M11 5 6 9H3v6h3l5 4V5Z"/>
+              <path d="m16 9 4 6M20 9l-4 6"/>
+            </svg>
+          </span>
+          <div>
+            <h3>YouTube stays quiet</h3>
+            <p>Video ads are muted when they start, your previous volume returns after, and Skip is clicked as soon as it appears.</p>
+          </div>
+        </div>
+        <div class="feature">
+          <span class="feature-mark" aria-hidden="true">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="4" y="7" width="12" height="12" rx="2"/>
+              <path d="M8 3h10a2 2 0 0 1 2 2v10"/>
+            </svg>
+          </span>
+          <div>
+            <h3>Built for messy pages</h3>
+            <p>Lazy loading, single-page navigation, and open shadow roots don't leave media behind. New content gets hidden too.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="wrap" id="install">
+      <div class="section-head">
+        <h2>Install in a minute.</h2>
+        <p>Chrome extensions installed outside the Web Store live in Developer mode. Download, unzip, and point Chrome at the folder.</p>
+      </div>
+
+      <div class="install-grid">
+        <div class="install-copy">
+          <p>The extension runs locally in your browser. No account, no server, no telemetry.</p>
+          <a class="button button-primary" href="https://github.com/mashiroiNtheW/click-to-view-media/archive/refs/heads/main.zip">Download the ZIP</a>
+        </div>
+
+        <ol class="steps">
+          <li>
+            <strong>Download and unzip</strong>
+            <span>Put the folder somewhere permanent — Chrome reads it from that location.</span>
+          </li>
+          <li>
+            <strong>Open Chrome's extension page</strong>
+            <span>Go to <code>chrome://extensions</code> and turn on <b>Developer mode</b>.</span>
+          </li>
+          <li>
+            <strong>Load the folder</strong>
+            <span>Choose <b>Load unpacked</b> and select the unzipped folder that contains <code>manifest.json</code>.</span>
+          </li>
+          <li>
+            <strong>Set your blur</strong>
+            <span>Pin the extension, click its toolbar icon, and choose your intensity. Refresh open tabs to apply it everywhere.</span>
+          </li>
+        </ol>
+      </div>
+    </section>
+  </main>
+
+  <footer class="wrap">
+    <span>Click to View Media, version 1.3.1</span>
+    <span class="footer-links">
+      <a href="https://github.com/mashiroiNtheW/click-to-view-media" target="_blank" rel="noreferrer">GitHub</a>
+      <a href="https://github.com/mashiroiNtheW/click-to-view-media/blob/main/README.txt" target="_blank" rel="noreferrer">README</a>
+    </span>
+  </footer>
+
+  <script>
+    (() => {
+      const demo = document.getElementById("demo");
+      const label = document.getElementById("demo-label");
+      const state = document.getElementById("demo-state");
+      if (!demo) return;
+
+      demo.addEventListener("click", () => {
+        const revealed = demo.getAttribute("aria-pressed") !== "true";
+        demo.setAttribute("aria-pressed", String(revealed));
+        demo.setAttribute("aria-label", revealed ? "Blur the demo image" : "Reveal the demo image");
+        label.textContent = revealed ? "Click to hide" : "Click to reveal";
+        state.textContent = revealed ? "revealed" : "blurred";
+      });
+    })();
+  </script>
+</body>
+</html>
