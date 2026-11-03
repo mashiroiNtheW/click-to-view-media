@@ -4,7 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Click to View Media — look when you're ready</title>
-  <meta name="description" content="A browser extension that blurs images and videos until you click them. Adjustable blur, YouTube ad mute and auto-skip, for Chrome and Firefox for Android.">
+  <meta name="description" content="A browser extension that blurs images and videos until you click them. Adjustable blur, per-item toggles, YouTube ad mute and auto-skip, for Chrome and Firefox for Android.">
+  <meta property="og:title" content="Click to View Media — look when you're ready">
+  <meta property="og:description" content="Blurs images and video until you click. Click again to hide. Adjustable blur, YouTube ad mute and auto-skip, for Chrome and Firefox for Android.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://mashirointhew.github.io/click-to-view-media/">
+  <meta property="og:image" content="https://mashirointhew.github.io/click-to-view-media/icons/icon-128.png">
+  <meta name="twitter:card" content="summary">
   <meta name="theme-color" content="#eef1f4">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23121620'/%3E%3Cpath d='M16 32s6-11 16-11 16 11 16 11-6 11-16 11-16-11-16-11Z' fill='none' stroke='%23fff' stroke-width='3'/%3E%3Ccircle cx='32' cy='32' r='5' fill='%23d6ff3f'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -69,13 +75,28 @@
 
     .brand svg { display: block; }
 
-    .top-link {
-      color: var(--muted);
+    .top-nav {
+      display: flex;
+      align-items: center;
+      gap: 22px;
       font-size: .92rem;
-      text-underline-offset: 4px;
     }
 
-    .top-link:hover { color: var(--ink); }
+    .top-nav a {
+      color: var(--muted);
+      text-decoration: none;
+    }
+
+    .top-nav a:hover { color: var(--ink); }
+
+    .top-nav .top-nav-github {
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      color: var(--ink);
+    }
+
+    .top-nav .top-nav-github:hover { border-color: #9eabb9; }
 
     .hero {
       display: grid;
@@ -146,7 +167,7 @@
 
     .button:focus-visible,
     .demo:focus-visible,
-    .top-link:focus-visible {
+    .top-nav a:focus-visible {
       outline: 3px solid rgba(31, 86, 255, .55);
       outline-offset: 3px;
     }
@@ -171,6 +192,8 @@
       color: var(--muted);
       font-size: .84rem;
     }
+
+    .micro a { text-underline-offset: 3px; }
 
     .demo-wrap {
       position: relative;
@@ -325,6 +348,51 @@
       line-height: 1.55;
     }
 
+    .privacy {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .privacy > div {
+      padding: 24px 28px 24px 0;
+    }
+
+    .privacy > div + div {
+      padding-left: 28px;
+      border-left: 1px solid var(--line);
+    }
+
+    .privacy strong {
+      display: block;
+      margin-bottom: 3px;
+      font-weight: 650;
+      letter-spacing: -.015em;
+    }
+
+    .privacy span {
+      color: var(--muted);
+      font-size: .92rem;
+    }
+
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 0 0 22px;
+      padding: 0;
+      list-style: none;
+    }
+
+    .tags li {
+      padding: 5px 9px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      font: 500 .74rem/1 var(--mono);
+    }
+
     .install-grid {
       display: grid;
       grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr);
@@ -432,6 +500,20 @@
 
       .feature:last-child { border-bottom: 0; }
 
+      .privacy {
+        grid-template-columns: 1fr;
+      }
+
+      .privacy > div {
+        padding: 18px 0;
+      }
+
+      .privacy > div + div {
+        padding-left: 0;
+        border-left: 0;
+        border-top: 1px solid var(--line);
+      }
+
       .demo-wrap { max-width: 540px; }
 
       .demo-note { right: 6px; }
@@ -442,7 +524,7 @@
 
       .top { padding: 18px 0; }
 
-      .top-link { display: none; }
+      .top-nav { display: none; }
 
       h1 { font-size: clamp(2.9rem, 16vw, 4.4rem); }
 
@@ -470,7 +552,12 @@
       </svg>
       Click to View Media
     </a>
-    <a class="top-link" href="https://github.com/mashiroiNtheW/click-to-view-media" target="_blank" rel="noreferrer">Source on GitHub</a>
+    <nav class="top-nav" aria-label="Page sections">
+      <a href="#features">Features</a>
+      <a href="#install">Chrome</a>
+      <a href="#android">Android</a>
+      <a class="top-nav-github" href="https://github.com/mashiroiNtheW/click-to-view-media" target="_blank" rel="noreferrer">GitHub</a>
+    </nav>
   </header>
 
   <main>
@@ -483,7 +570,7 @@
           <a class="button button-primary" href="https://github.com/mashiroiNtheW/click-to-view-media/archive/refs/heads/main.zip">Download extension</a>
           <a class="button button-secondary" href="https://github.com/mashiroiNtheW/click-to-view-media" target="_blank" rel="noreferrer">View source</a>
         </div>
-        <p class="micro">Free. No account. Chrome installs unpacked; Firefox Android installs locally over USB.</p>
+        <p class="micro">Free. No account. Chrome installs unpacked; <a href="#android">Firefox Android installs locally over USB</a>.</p>
       </div>
 
       <div class="demo-wrap">
@@ -556,12 +643,51 @@
             <p>Lazy loading, single-page navigation, and open shadow roots don't leave media behind. New content gets hidden too.</p>
           </div>
         </div>
+        <div class="feature">
+          <span class="feature-mark" aria-hidden="true">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="9" width="18" height="6" rx="3"/>
+              <circle cx="9" cy="12" r="2.5" fill="currentColor" stroke="none"/>
+            </svg>
+          </span>
+          <div>
+            <h3>One item at a time</h3>
+            <p>Every image and video toggles on its own. Reveal one and the rest of the page stays exactly as blurred as before.</p>
+          </div>
+        </div>
+        <div class="feature">
+          <span class="feature-mark" aria-hidden="true">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 3 5 6v6c0 4 3 7 7 8 4-1 7-4 7-8V6l-7-3Z"/>
+              <path d="m9 12 2 2 4-4"/>
+            </svg>
+          </span>
+          <div>
+            <h3>Local by design</h3>
+            <p>No account, no server, no telemetry. The only thing stored is your blur amount, on your device.</p>
+          </div>
+        </div>
       </div>
     </section>
 
+    <div class="wrap privacy" aria-label="Privacy at a glance">
+      <div>
+        <strong>No account</strong>
+        <span>Install it and use it offline.</span>
+      </div>
+      <div>
+        <strong>No server</strong>
+        <span>Media and pages never leave the browser.</span>
+      </div>
+      <div>
+        <strong>No telemetry</strong>
+        <span>Only the blur value is saved.</span>
+      </div>
+    </div>
+
     <section class="wrap" id="install">
       <div class="section-head">
-        <h2>Install in a minute.</h2>
+        <h2>Install on Chrome.</h2>
         <p>Chrome extensions installed outside the Web Store live in Developer mode. Download, unzip, and point Chrome at the folder.</p>
       </div>
 
@@ -600,8 +726,13 @@
 
       <div class="install-grid">
         <div class="install-copy">
+          <ul class="tags">
+            <li>Firefox Beta 142+</li>
+            <li>Node 18+</li>
+            <li>USB debugging</li>
+          </ul>
           <p>You need Firefox Beta on the phone, Node.js on the computer, and USB debugging switched on. The add-on runs from <code>dist/firefox</code>.</p>
-          <a class="button button-secondary" href="https://github.com/mashiroiNtheW/click-to-view-media/blob/main/README.txt" target="_blank" rel="noreferrer">Read the Android guide</a>
+          <a class="button button-secondary" href="https://github.com/mashiroiNtheW/click-to-view-media/blob/main/README.md" target="_blank" rel="noreferrer">Read the Android guide</a>
           <p class="note"><strong>Temporary by design.</strong> Firefox removes the add-on when the browser process ends. Re-run the command to load it again.</p>
         </div>
 
@@ -632,10 +763,11 @@
   </main>
 
   <footer class="wrap">
-    <span>Click to View Media, version 1.4.0</span>
+    <span>Click to View Media, version 1.4.0. Not affiliated with YouTube or Google.</span>
     <span class="footer-links">
       <a href="https://github.com/mashiroiNtheW/click-to-view-media" target="_blank" rel="noreferrer">GitHub</a>
-      <a href="https://github.com/mashiroiNtheW/click-to-view-media/blob/main/README.txt" target="_blank" rel="noreferrer">README</a>
+      <a href="https://github.com/mashiroiNtheW/click-to-view-media/blob/main/README.md" target="_blank" rel="noreferrer">README</a>
+      <a href="https://github.com/mashiroiNtheW/click-to-view-media/issues" target="_blank" rel="noreferrer">Report an issue</a>
     </span>
   </footer>
 
