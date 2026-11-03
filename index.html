@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Click to View Media — look when you're ready</title>
-  <meta name="description" content="A Chrome extension that blurs images and videos until you click them. Adjustable blur, YouTube ad mute and auto-skip, built for real pages.">
+  <meta name="description" content="A browser extension that blurs images and videos until you click them. Adjustable blur, YouTube ad mute and auto-skip, for Chrome and Firefox for Android.">
   <meta name="theme-color" content="#eef1f4">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23121620'/%3E%3Cpath d='M16 32s6-11 16-11 16 11 16 11-6 11-16 11-16-11-16-11Z' fill='none' stroke='%23fff' stroke-width='3'/%3E%3Ccircle cx='32' cy='32' r='5' fill='%23d6ff3f'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -376,6 +376,19 @@
 
     .steps span { color: var(--muted); font-size: .94rem; }
 
+    .note {
+      margin: 22px 0 0;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-left: 3px solid var(--blue);
+      border-radius: 6px;
+      color: var(--muted);
+      font-size: .92rem;
+      line-height: 1.55;
+    }
+
+    .note strong { color: var(--ink); font-weight: 650; }
+
     code {
       padding: 2px 5px;
       border: 1px solid var(--line);
@@ -463,14 +476,14 @@
   <main>
     <div class="wrap hero">
       <div>
-        <p class="status">Chrome extension, version 1.3.1</p>
+        <p class="status">Chrome extension + Firefox Android, v1.4.0</p>
         <h1>Look when you're ready.</h1>
-        <p class="lede">Images and video stay blurred until you click. YouTube ads get muted and skipped. Every reveal is yours.</p>
+        <p class="lede">Images and video stay blurred until you click. Click again to hide. YouTube ads get muted and skipped. Every reveal is yours.</p>
         <div class="actions">
           <a class="button button-primary" href="https://github.com/mashiroiNtheW/click-to-view-media/archive/refs/heads/main.zip">Download extension</a>
           <a class="button button-secondary" href="https://github.com/mashiroiNtheW/click-to-view-media" target="_blank" rel="noreferrer">View source</a>
         </div>
-        <p class="micro">Free. No account. Installs as an unpacked Chrome extension.</p>
+        <p class="micro">Free. No account. Chrome installs unpacked; Firefox Android installs locally over USB.</p>
       </div>
 
       <div class="demo-wrap">
@@ -516,7 +529,7 @@
           </span>
           <div>
             <h3>Blur, on your terms</h3>
-            <p>Open the toolbar popup and set blur from 18 to 100 pixels. The setting follows you across pages.</p>
+            <p>Open the toolbar popup and set blur from 18 to 100 pixels. The setting follows you across pages. Click any blurred item to reveal it, then click it again to hide it.</p>
           </div>
         </div>
         <div class="feature">
@@ -578,10 +591,48 @@
         </ol>
       </div>
     </section>
+
+    <section class="wrap" id="android">
+      <div class="section-head">
+        <h2>Firefox on Android.</h2>
+        <p>A local build for Firefox for Android Beta. It installs over USB with web-ext — no AMO listing, no signing, no account. Because of that, the install is temporary.</p>
+      </div>
+
+      <div class="install-grid">
+        <div class="install-copy">
+          <p>You need Firefox Beta on the phone, Node.js on the computer, and USB debugging switched on. The add-on runs from <code>dist/firefox</code>.</p>
+          <a class="button button-secondary" href="https://github.com/mashiroiNtheW/click-to-view-media/blob/main/README.txt" target="_blank" rel="noreferrer">Read the Android guide</a>
+          <p class="note"><strong>Temporary by design.</strong> Firefox removes the add-on when the browser process ends. Re-run the command to load it again.</p>
+        </div>
+
+        <ol class="steps">
+          <li>
+            <strong>Get the source and tools</strong>
+            <span>Download the repo, then run <code>npm install</code> once.</span>
+          </li>
+          <li>
+            <strong>Build the Firefox folder</strong>
+            <span>Run <code>npm run build:firefox</code>. It writes <code>dist/firefox</code>.</span>
+          </li>
+          <li>
+            <strong>Connect Firefox Beta</strong>
+            <span>Enable USB debugging on the phone and confirm <code>adb devices</code> sees it. Beta 142 or newer is required.</span>
+          </li>
+          <li>
+            <strong>Run it</strong>
+            <span>Run <code>npm run run:android</code> and keep the terminal open. Firefox Beta opens with the add-on loaded.</span>
+          </li>
+          <li>
+            <strong>Open the popup</strong>
+            <span>In Firefox, open the menu, then Extensions, then Click to View Media to change blur.</span>
+          </li>
+        </ol>
+      </div>
+    </section>
   </main>
 
   <footer class="wrap">
-    <span>Click to View Media, version 1.3.1</span>
+    <span>Click to View Media, version 1.4.0</span>
     <span class="footer-links">
       <a href="https://github.com/mashiroiNtheW/click-to-view-media" target="_blank" rel="noreferrer">GitHub</a>
       <a href="https://github.com/mashiroiNtheW/click-to-view-media/blob/main/README.txt" target="_blank" rel="noreferrer">README</a>

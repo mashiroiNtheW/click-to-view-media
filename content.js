@@ -61,15 +61,56 @@
     }
   }
 
-  applyBlurPx(DEFAULT_BLUR_PX);
-  try {
-    if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.sync) {
-      chrome.storage.sync.get({ blurPx: DEFAULT_BLUR_PX }, data => applyBlurPx(data.blurPx));
-      chrome.storage.onChanged.addListener((changes, area) => {
-        if (area === "sync" && changes.blurPx) applyBlurPx(changes.blurPx.newValue);
-      });
+  const isFirefoxApi = typeof browser !== "undefined" && !!browser.runtime;
+  const extensionApi = isFirefoxApi
+    ? browser
+    : (typeof chrome !== "undefined" && chrome.storage ? chrome : null);
+  let storageAreaName = "sync";
+  let storageArea = null;
+  if (extensionApi && extensionApi.storage) {
+    if (isFirefoxApi && extensionApi.storage.local) {
+      storageArea = extensionApi.storage.local;
+      storageAreaName = "local";
+    } else if (extensionApi.storage.sync) {
+      storageArea = extensionApi.storage.sync;
+      storageAreaName = "sync";
+    } else if (extensionApi.storage.local) {
+      storageArea = extensionApi.storage.local;
+      storageAreaName = "local";
     }
-  } catch (_) {}
+  }
+
+  function storageGet(defaults) {
+    if (!storageArea) return Promise.resolve(defaults);
+    return new Promise(resolve => {
+      let settled = false;
+      const done = value => {
+        if (settled) return;
+        settled = true;
+        resolve(value || defaults);
+      };
+      try {
+        if (isFirefoxApi) {
+          storageArea.get(defaults).then(done, () => done(defaults));
+        } else {
+          storageArea.get(defaults, done);
+        }
+      } catch (_) {
+        done(defaults);
+      }
+    });
+  }
+
+  function storageOnChanged(callback) {
+    if (!extensionApi || !extensionApi.storage || !extensionApi.storage.onChanged) return;
+    extensionApi.storage.onChanged.addListener((changes, area) => {
+      if (area === storageAreaName && changes.blurPx) callback(changes.blurPx.newValue);
+    });
+  }
+
+  applyBlurPx(DEFAULT_BLUR_PX);
+  storageGet({ blurPx: DEFAULT_BLUR_PX }).then(data => applyBlurPx(data.blurPx));
+  storageOnChanged(applyBlurPx);
 
   function isMediaElement(el) {
     const tag = el.localName;
@@ -177,10 +218,41 @@
     root.querySelectorAll(BG_CANDIDATE_SELECTOR).forEach(hide);
 
     if (!includeShadowRoots) return;
-    root.querySelectorAll("*").forEach(el => {
+    const doc = root.ownerDocument || (root.nodeType === Node.DOCUMENT_NODE ? root : document);
+    let walker;
+    try {
+      walker = doc.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
+    } catch (_) {
+      return;
+    }
+    const budget = root === document || root === document.documentElement ? 20000 : 3000;
+    let inspected = 0;
+    while (walker.nextNode()) {
+      const el = walker.currentNode;
       if (el.shadowRoot) {
         scan(el.shadowRoot);
         observeRoot(el.shadowRoot);
+      }
+      if (++inspected >= budget) break;
+    }
+  }
+
+  const pendingScanNodes = new Set();
+  let scanFrame = 0;
+  const requestFrame = typeof requestAnimationFrame === "function"
+    ? callback => requestAnimationFrame(callback)
+    : callback => setTimeout(callback, 16);
+
+  function scheduleScan(node) {
+    if (!node) return;
+    pendingScanNodes.add(node);
+    if (scanFrame) return;
+    scanFrame = requestFrame(() => {
+      scanFrame = 0;
+      const nodes = Array.from(pendingScanNodes);
+      pendingScanNodes.clear();
+      for (const queued of nodes) {
+        if (queued.isConnected) scan(queued);
       }
     });
   }
@@ -190,9 +262,9 @@
       if (record.type === "childList") {
         record.addedNodes.forEach(node => {
           if (node.nodeType === Node.ELEMENT_NODE || node.nodeType === Node.DOCUMENT_FRAGMENT_NODE) {
-            scan(node);
+            scheduleScan(node);
             if (node.shadowRoot) {
-              scan(node.shadowRoot);
+              scheduleScan(node.shadowRoot);
               observeRoot(node.shadowRoot);
             }
           }
@@ -228,6 +300,13 @@
         attributeFilter: ["src", "srcset", "poster", "class", "style", MARK]
       });
     } catch (_) {}
+    // Clicks inside a shadow root are handled by the root itself, so media
+    // inside shadow roots toggles even when the click event is not composed.
+    if (root !== document) {
+      try {
+        root.addEventListener("click", handleMediaClick, true);
+      } catch (_) {}
+    }
   }
 
   observeRoot(document);
@@ -253,6 +332,12 @@
       ".ytp-skip-ad-button",
       ".ytp-ad-skip-button-modern",
       ".ytp-ad-skip-button-container button",
+      // Mobile web (m.youtube.com) player variants.
+      "button.ytm-ad-skip-button",
+      ".ytm-ad-skip-button",
+      "ytm-button-renderer.ad-skip-button button",
+      ".ad-skip-button",
+      "ytm-player .ytp-ad-skip-button",
       "ytd-button-renderer#skip-button button",
       "#skip-button button",
       "ytd-button-renderer#skip-button",
@@ -266,11 +351,15 @@
     let watchedPlayer = null;
 
     function getPlayer() {
-      return document.querySelector("#movie_player, .html5-video-player");
+      return document.querySelector(
+        "#movie_player, .html5-video-player, ytm-player, " +
+        "#player-container-id, #player-container, ytd-player"
+      );
     }
 
     function getMainVideo(player) {
       return (player || document).querySelector("video.html5-main-video") ||
+        (player || document).querySelector("video.video-stream") ||
         (player || document).querySelector("video");
     }
 
@@ -287,10 +376,16 @@
       if (player.classList.contains("ad-showing")) return true;
       if (player.closest && player.closest(".ad-showing")) return true;
       if (player.querySelector(".ad-showing")) return true;
+      // Mobile web may flag the ad on the surrounding player container.
+      if (document.querySelector(
+        "#movie_player.ad-showing, .html5-video-player.ad-showing, ytm-player.ad-showing, " +
+        "#player-container-id.ad-showing, #player-container.ad-showing"
+      )) return true;
       // Fallback for player variants that omit the ad-showing class.
       const adUi = player.querySelector(
         ".ytp-ad-player-overlay, .ytp-ad-progress, .ytp-ad-skip-button, " +
-        ".ytp-ad-skip-button-modern, .ytp-skip-ad-button"
+        ".ytp-ad-skip-button-modern, .ytp-skip-ad-button, .ytm-ad-skip-button, " +
+        ".ad-skip-button, .ytp-ad-text"
       );
       return !!adUi && isVisible(adUi);
     }
@@ -324,10 +419,14 @@
       }
       // Text fallback, restricted to the player while an ad is active.
       if (player) {
-        for (const button of player.querySelectorAll("button")) {
+        const candidates = player.querySelectorAll(
+          'button, [role="button"], ytm-button-renderer'
+        );
+        for (const button of candidates) {
           if (!isVisible(button)) continue;
+          if (button.getAttribute("aria-disabled") === "true") continue;
           const text = (button.textContent || "").trim().toLowerCase();
-          if (/^skip(?: ad| ads)?$/.test(text)) return button;
+          if (/^skip(?:\s+(?:ad|ads|advertisement))?$/.test(text)) return button;
         }
       }
       return null;
@@ -393,15 +492,25 @@
     start();
   }
 
-  // Capture clicks before page handlers. Revealed items stay revealed.
-  document.addEventListener("click", event => {
-    const el = event.target && event.target.closest
-      ? event.target.closest(`[${MARK}="hidden"]`)
-      : null;
-    if (!el) return;
-    event.preventDefault();
-    event.stopPropagation();
-    event.stopImmediatePropagation();
+  // Capture clicks before page handlers. Clicking a hidden item reveals it;
+  // clicking that same revealed item again hides it. Each element toggles on
+  // its own, so revealing one image never affects the rest of the page.
+  function findTogglable(start) {
+    let el = start instanceof Element ? start : (start && start.parentElement);
+    while (el) {
+      if (el.hasAttribute(REVEALED)) return { el, reveal: false };
+      if (el.getAttribute(MARK) === "hidden") return { el, reveal: true };
+      if (el.parentElement) {
+        el = el.parentElement;
+      } else {
+        const root = el.getRootNode ? el.getRootNode() : null;
+        el = root && root.host ? root.host : null;
+      }
+    }
+    return null;
+  }
+
+  function revealElement(el) {
     el.setAttribute(REVEALED, "true");
     el.removeAttribute(MARK);
     el.removeAttribute(BG_MARK);
@@ -418,5 +527,22 @@
       el.controls = true;
       el.preload = "metadata";
     }
-  }, true);
+  }
+
+  function unrevealElement(el) {
+    el.removeAttribute(REVEALED);
+    hide(el);
+  }
+
+  function handleMediaClick(event) {
+    const toggled = findTogglable(event.target);
+    if (!toggled) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+    if (toggled.reveal) revealElement(toggled.el);
+    else unrevealElement(toggled.el);
+  }
+
+  document.addEventListener("click", handleMediaClick, true);
 })();
