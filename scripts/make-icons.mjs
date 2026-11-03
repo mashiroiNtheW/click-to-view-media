@@ -54,6 +54,22 @@ function encodePng(size, pixels) {
   ]);
 }
 
+function mix(a, b, t) {
+  return [
+    Math.round(a[0] + (b[0] - a[0]) * t),
+    Math.round(a[1] + (b[1] - a[1]) * t),
+    Math.round(a[2] + (b[2] - a[2]) * t)
+  ];
+}
+
+function insideRoundedRect(x, y, left, top, width, height, radius) {
+  const qx = Math.abs(x - left - width / 2) - width / 2 + radius;
+  const qy = Math.abs(y - top - height / 2) - height / 2 + radius;
+  const distance = Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) +
+    Math.min(Math.max(qx, qy), 0) - radius;
+  return distance <= 0;
+}
+
 function renderIcon(size) {
   const scale = size * SAMPLES;
   const big = Buffer.alloc(scale * scale * 4);
@@ -75,20 +91,26 @@ function renderIcon(size) {
 
       let color = INK;
 
-      // Almond-shaped eye outline.
-      const u = (x - half) / scale;
-      const v = (y - half) / scale;
-      const eyeHalfWidth = 0.30;
-      const eyeHalfHeight = 0.155;
-      if (Math.abs(u) < eyeHalfWidth) {
-        const curve = 1 - (u / eyeHalfWidth) ** 2;
-        const edge = eyeHalfHeight * curve;
-        const t = Math.abs(v) / edge;
-        if (t > 0.74 && t <= 1) color = WHITE;
-      }
+      // Pixel mosaic: hidden media, with one tile revealed in lime.
+      const tile = scale * 0.16;
+      const gap = scale * 0.055;
+      const total = tile * 3 + gap * 2;
+      const start = (scale - total) / 2;
+      const tileRadius = scale * 0.025;
 
-      // Pupil.
-      if (Math.hypot(x - half, y - half) <= scale * 0.085) color = LIME;
+      for (let row = 0; row < 3; row++) {
+        for (let col = 0; col < 3; col++) {
+          const left = start + col * (tile + gap);
+          const top = start + row * (tile + gap);
+          if (!insideRoundedRect(x, y, left, top, tile, tile, tileRadius)) continue;
+          if (row === 1 && col === 1) {
+            color = LIME;
+          } else {
+            const edge = row === 1 || col === 1;
+            color = mix(INK, WHITE, edge ? 0.88 : 0.62);
+          }
+        }
+      }
 
       const index = (py * scale + px) * 4;
       big[index] = color[0];
